@@ -406,7 +406,10 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -std=gnu89
+		   -std=gnu89 \
+		   -mtune=cortex-a72 -Wno-array-bounds -Wno-tautological-compare -Wno-misleading-indentation -Wno-maybe-uninitialized \
+                   -Wno-memset-transposed-args -Wno-discarded-array-qualifiers -Wno-logical-not-parentheses -Wno-array-bounds \
+                   -Wno-switch -Wno-switch-bool -Wno-unused-variable -Wno-bool-compare
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
