@@ -1182,34 +1182,6 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 				UnkownGestrue;
 	}
 
-	keyCode = UnkownGestrue;
-	// Get key code based on registered gesture.
-	switch (gesture) {
-		case DouTap:
-			keyCode = KEY_DOUBLE_TAP;
-			break;
-		case UpVee:
-			keyCode = KEY_GESTURE_V;
-			break;
-		case DownVee:
-			keyCode = KEY_GESTURE_V;
-			break;
-		case LeftVee:
-			keyCode = KEY_GESTURE_RIGHT_V;
-			break;
-		case RightVee:
-			keyCode = KEY_GESTURE_LEFT_V;
-			break;
-		case Circle:
-			keyCode = KEY_GESTURE_CIRCLE;
-			break;
-		case DouSwip:
-			keyCode = KEY_GESTURE_TWO_SWIPE;
-			break;
-		default:
-			break;
-	}
-
 	TPD_ERR("detect %s gesture\n", gesture == DouTap ? "(double tap)" :
 			gesture == UpVee ? "(V)" :
 			gesture == DownVee ? "(^)" :
