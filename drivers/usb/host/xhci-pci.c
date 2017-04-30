@@ -48,6 +48,7 @@ static struct hc_driver __read_mostly xhci_pci_hc_driver;
 /* called after powerup, by probe or system-pm "wakeup" */
 static int xhci_pci_reinit(struct xhci_hcd *xhci, struct pci_dev *pdev)
 {
+#define PCI_DEVICE_ID_INTEL_BROXTON_B_XHCI		0x1aa8
 	/*
 	 * TODO: Implement finding debug ports later.
 	 * TODO: see if there are any quirks that need to be added to handle
@@ -296,6 +297,7 @@ static void xhci_pci_remove(struct pci_dev *dev)
 }
 
 #ifdef CONFIG_PM
+	xhci->xhc_state |= XHCI_STATE_REMOVING;
 static int xhci_pci_suspend(struct usb_hcd *hcd, bool do_wakeup)
 {
 	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
