@@ -2,7 +2,7 @@
  * Core MDSS framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2008-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2017, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -54,6 +54,8 @@
 #include "mdss_debug.h"
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
+
+#include "mdss_livedisplay.h"
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -783,228 +785,6 @@ static ssize_t mdss_fb_get_dfps_mode(struct device *dev,
 	return ret;
 }
 
-static ssize_t mdss_fb_get_ACL(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int ret,acl_mode;
-	acl_mode = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_GET_ACL,
-			NULL);
-
-	ret = scnprintf(buf, PAGE_SIZE, "ACL current mode %d\n"
-											"0--ACL OFF\n"
-											"1--ACL 50\n"
-											"2--ALC 40\n"
-											"3--ACL 30\n", 
-											acl_mode);
-
-	return ret;
-}
-
-static ssize_t mdss_fb_set_ACL(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int state = 0;
-
-	rc = kstrtoint(buf, 10, &state);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-
-	pr_err("ACL = %d\n", state);
-
-	rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_ACL,
-		(void *)(unsigned long)state);
-	if (rc) {
-		pr_warn("unable to set ACL(%d)\n", state);
-	}
-
-	return count;
-}
-
-static DEVICE_ATTR(acl, S_IRUGO | S_IWUSR | S_IWGRP,
-	mdss_fb_get_ACL, mdss_fb_set_ACL);
-
-
-static ssize_t mdss_fb_get_max_brightness(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int ret = 0;
-	int level = 0;
-
-	level = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_GET_MAX_BRIGHTNESS,
-			NULL);
-
-	ret=scnprintf(buf, PAGE_SIZE, "max brightness level = %d\n"
-					                        "0-->max brightness level 380nit\n"
-											"1-->max brightness level 430nit\n"
-											"2-->HBM Enabled\n",
-											level&0x000F);
-	return ret;
-}
-
-static ssize_t mdss_fb_set_max_brightness(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int level = 0;
-
-	rc = kstrtoint(buf, 16, &level);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-
-	pr_err("Max Brightness Setting = 0x%02X\n", level);
-    rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_MAX_BRIGHTNESS,
-	    (void *)(unsigned long)level);
-	if (rc)
-		pr_err("Fail to set max brihtness level 0x%02X\n", level);
-
-	return count;
-}
-
-static DEVICE_ATTR(hbm, S_IRUGO | S_IWUSR,
-	mdss_fb_get_max_brightness, mdss_fb_set_max_brightness);
-
-
-static ssize_t mdss_fb_get_srgb_mode(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int ret = 0;
-	int level = 0;
-
-	level = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_GET_SRGB_MODE,
-			NULL);
-
-	ret=scnprintf(buf, PAGE_SIZE, "mode = %d\n"
-					                        "0-->sRGB Mode OFF\n"
-											"1-->sRGB Mode ON\n",
-										    level);
-	return ret;
-}
-
-static ssize_t mdss_fb_set_srgb_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int level = 0;
-
-	rc = kstrtoint(buf, 10, &level);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-    rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_SRGB_MODE,
-	    (void *)(unsigned long)level);
-	if (rc)
-		pr_err("Fail to set sRGB mode: %d\n", level);
-
-	return count;
-}
-
-static DEVICE_ATTR(SRGB, S_IRUGO | S_IWUSR,
-	mdss_fb_get_srgb_mode, mdss_fb_set_srgb_mode);
-
-
-static ssize_t mdss_fb_get_adobe_rgb_mode(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int ret = 0;
-	int level = 0;
-
-	level = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_GET_ADOBE_RGB_MODE,
-			NULL);
-
-	ret=scnprintf(buf, PAGE_SIZE, "mode = %d\n"
-					                        "0-->Adobe RGB Mode OFF\n"
-											"1-->Adobe RGB Mode ON\n",
-										    level);
-	return ret;
-}
-
-static ssize_t mdss_fb_set_adobe_rgb_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int level = 0;
-
-	rc = kstrtoint(buf, 10, &level);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-    rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_ADOBE_RGB_MODE,
-	    (void *)(unsigned long)level);
-	if (rc)
-		pr_err("Fail to set Adobe RGB mode: %d\n", level);
-
-	return count;
-}
-
-static DEVICE_ATTR(Adobe_RGB, S_IRUGO | S_IWUSR,
-	mdss_fb_get_adobe_rgb_mode, mdss_fb_set_adobe_rgb_mode);
-
-static ssize_t mdss_fb_get_dci_p3_mode(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int ret = 0;
-	int level = 0;
-
-	level = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_GET_DCI_P3_MODE,
-			NULL);
-
-	ret=scnprintf(buf, PAGE_SIZE, "mode = %d\n"
-					                        "0-->DCI-P3 Mode OFF\n"
-											"1-->DCI-P3 Mode ON\n",
-										    level);
-	return ret;
-}
-
-static ssize_t mdss_fb_set_dci_p3_mode(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = fbi->par;
-	int rc = 0;
-	int level = 0;
-
-	rc = kstrtoint(buf, 10, &level);
-	if (rc) {
-		pr_err("kstrtoint failed. rc=%d\n", rc);
-		return rc;
-	}
-    rc = mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_SET_DCI_P3_MODE,
-	    (void *)(unsigned long)level);
-	if (rc)
-		pr_err("Fail to set DCI P3 mode: %d\n", level);
-
-	return count;
-}
-
-static DEVICE_ATTR(DCI_P3, S_IRUGO | S_IWUSR,
-	mdss_fb_get_dci_p3_mode, mdss_fb_set_dci_p3_mode);
-
-
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -1032,12 +812,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_thermal_level.attr,
 	&dev_attr_msm_fb_panel_status.attr,
 	&dev_attr_msm_fb_dfps_mode.attr,
-	&dev_attr_acl.attr,
-	&dev_attr_hbm.attr,
-	&dev_attr_SRGB.attr,
-		&dev_attr_Adobe_RGB.attr,
-		&dev_attr_DCI_P3.attr,
-
 	NULL,
 };
 
@@ -1052,7 +826,8 @@ static int mdss_fb_create_sysfs(struct msm_fb_data_type *mfd)
 	rc = sysfs_create_group(&mfd->fbi->dev->kobj, &mdss_fb_attr_group);
 	if (rc)
 		pr_err("sysfs group creation failed, rc=%d\n", rc);
-	return rc;
+
+	return mdss_livedisplay_create_sysfs(mfd);
 }
 
 static void mdss_fb_remove_sysfs(struct msm_fb_data_type *mfd)
@@ -2310,6 +2085,10 @@ err_put:
 	dma_buf_put(mfd->fbmem_buf);
 fb_mmap_failed:
 	ion_free(mfd->fb_ion_client, mfd->fb_ion_handle);
+	mfd->fb_attachment = NULL;
+	mfd->fb_table = NULL;
+	mfd->fb_ion_handle = NULL;
+	mfd->fbmem_buf = NULL;
 	return rc;
 }
 
@@ -3286,7 +3065,7 @@ static int mdss_fb_pan_display_ex(struct fb_info *info,
 	if (var->yoffset > (info->var.yres_virtual - info->var.yres))
 		return -EINVAL;
 
-	ret = mdss_fb_wait_for_kickoff(mfd);
+	ret = mdss_fb_pan_idle(mfd);
 	if (ret) {
 		pr_err("wait_for_kick failed. rc=%d\n", ret);
 		return ret;
@@ -4371,8 +4150,6 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		goto buf_sync_err_2;
 	}
 
-	sync_fence_install(rel_fence, rel_fen_fd);
-
 	ret = copy_to_user(buf_sync->rel_fen_fd, &rel_fen_fd, sizeof(int));
 	if (ret) {
 		pr_err("%s: copy_to_user failed\n", sync_pt_data->fence_name);
@@ -4409,8 +4186,6 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		goto buf_sync_err_3;
 	}
 
-	sync_fence_install(retire_fence, retire_fen_fd);
-
 	ret = copy_to_user(buf_sync->retire_fen_fd, &retire_fen_fd,
 			sizeof(int));
 	if (ret) {
@@ -4420,6 +4195,9 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		sync_fence_put(retire_fence);
 		goto buf_sync_err_3;
 	}
+
+	sync_fence_install(rel_fence, rel_fen_fd);
+	sync_fence_install(retire_fence, retire_fen_fd);
 
 skip_retire_fence:
 	mutex_unlock(&sync_pt_data->sync_mutex);

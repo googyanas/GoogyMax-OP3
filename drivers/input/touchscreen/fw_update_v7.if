@@ -1630,7 +1630,6 @@ static int fwu_write_partition_table(void)
 	retval = fwu_write_configuration();
 	if (retval < 0)
 		goto free;
-
 free:
 	kfree(fwu->read_config_buf);
 	return 0;

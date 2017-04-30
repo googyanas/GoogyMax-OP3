@@ -19,8 +19,6 @@
 #include <linux/stringify.h>
 #include <linux/types.h>
 #include <linux/debugfs.h>
-#include "mdss_oem_config.h"
-
 
 /* panel id type */
 struct panel_id {
@@ -260,16 +258,7 @@ enum mdss_intf_events {
 	MDSS_EVENT_DSI_RESET_WRITE_PTR,
 	MDSS_EVENT_PANEL_TIMING_SWITCH,
 	MDSS_EVENT_MAX,
-	MDSS_EVENT_PANEL_SET_ACL,
-	MDSS_EVENT_PANEL_GET_ACL,
-	MDSS_EVENT_PANEL_SET_MAX_BRIGHTNESS,
-	MDSS_EVENT_PANEL_GET_MAX_BRIGHTNESS,
-	MDSS_EVENT_PANEL_SET_SRGB_MODE,
-	MDSS_EVENT_PANEL_GET_SRGB_MODE,
-	MDSS_EVENT_PANEL_SET_ADOBE_RGB_MODE,
-	MDSS_EVENT_PANEL_GET_ADOBE_RGB_MODE,
-	MDSS_EVENT_PANEL_SET_DCI_P3_MODE,
-	MDSS_EVENT_PANEL_GET_DCI_P3_MODE,
+	MDSS_EVENT_UPDATE_LIVEDISPLAY,
 };
 
 struct lcd_panel_info {
@@ -597,6 +586,8 @@ struct mdss_panel_roi_alignment {
 	u32 min_height;
 };
 
+struct mdss_livedisplay_ctx;
+
 struct mdss_panel_hdr_properties {
 	bool hdr_enabled;
 
@@ -740,6 +731,8 @@ struct mdss_panel_info {
 	 * configuring the event timer wakeup logic.
 	 */
 	u32 adjust_timer_delay_ms;
+
+	struct mdss_livedisplay_ctx *livedisplay;
 
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;

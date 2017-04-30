@@ -569,7 +569,7 @@ int mdss_mdp_resource_control(struct mdss_mdp_ctl *ctl, u32 sw_event)
 	mdss_mdp_get_split_display_ctls(&ctl, &sctl);
 
 	ctx = (struct mdss_mdp_cmd_ctx *) ctl->intf_ctx[MASTER_CTX];
-	if (!ctx || !ctx->ctl ) {
+	if (!ctx) {
 		pr_err("%s invalid ctx\n", __func__);
 		rc = -EINVAL;
 		goto exit;
@@ -1203,7 +1203,8 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 			       atomic_read(&ctx->koff_cnt));
 		if (sync_ppdone) {
 			atomic_inc(&ctx->pp_done_cnt);
-			schedule_work(&ctx->pp_done_work);
+			if (!ctl->commit_in_progress)
+				schedule_work(&ctx->pp_done_work);
 
 			mdss_mdp_resource_control(ctl,
 				MDP_RSRC_CTL_EVENT_PP_DONE);
