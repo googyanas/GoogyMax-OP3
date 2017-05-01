@@ -852,7 +852,7 @@ translate_table(struct net *net, struct xt_table_info *newinfo, void *entry0,
 		}
 	}
 
-	if (!mark_source_chains(newinfo, repl->valid_hooks, entry0, offsets)) {
+	if (!mark_source_chains(newinfo, repl->valid_hooks, entry0)) {
 		ret = -ELOOP;
 		goto out_free;
 	}
@@ -1594,7 +1594,7 @@ compat_copy_entry_from_user(struct compat_ipt_entry *e, void **dstptr,
 	*size += sizeof(struct ipt_entry) - sizeof(struct compat_ipt_entry);
 
 	xt_ematch_foreach(ematch, e) {
-		ret = xt_compat_match_from_user(ematch, dstptr, size);
+		xt_compat_match_from_user(ematch, dstptr, size);
 		if (ret != 0)
 			return ret;
 	}
