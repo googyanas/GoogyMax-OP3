@@ -1755,6 +1755,13 @@ void usbnet_disconnect (struct usb_interface *intf)
 
 	if (dev->driver_info->unbind)
 		dev->driver_info->unbind (dev, intf);
+	/* subdrivers must undo all they did in bind() if they
+	 * fail it, but we may fail later and a deferred kevent
+	 * may trigger an error resubmitting itself and, worse,
+	 * schedule a timer. So we kill it all just in case.
+	 */
+	cancel_work_sync(&dev->kevent);
+	del_timer_sync(&dev->delay);
 
 	usb_kill_urb(dev->interrupt);
 	usb_free_urb(dev->interrupt);
