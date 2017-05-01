@@ -1576,7 +1576,9 @@ static void binder_transaction(struct binder_proc *proc,
 			else
 				fp->type = BINDER_TYPE_WEAK_HANDLE;
 			fp->binder = 0;
+			fp->binder = 0;
 			fp->handle = ref->desc;
+			fp->cookie = 0;
 			fp->cookie = 0;
 			binder_inc_ref(ref, fp->type == BINDER_TYPE_HANDLE,
 				       &thread->todo);
@@ -1624,7 +1626,9 @@ static void binder_transaction(struct binder_proc *proc,
 					goto err_binder_get_ref_for_node_failed;
 				}
 				fp->binder = 0;
+				fp->binder = 0;
 				fp->handle = new_ref->desc;
+				fp->cookie = 0;
 				fp->cookie = 0;
 				binder_inc_ref(new_ref, fp->type == BINDER_TYPE_HANDLE, NULL);
 				trace_binder_transaction_ref_to_ref(t, ref,
@@ -1671,6 +1675,7 @@ static void binder_transaction(struct binder_proc *proc,
 				fput(file);
 				return_error = BR_FAILED_REPLY;
 				goto err_get_unused_fd_failed;
+			fp->binder = 0;
 			}
 			task_fd_install(target_proc, target_fd, file);
 			trace_binder_transaction_fd(t, fp->handle, target_fd);

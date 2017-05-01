@@ -163,6 +163,8 @@ static const struct usb_device_id id_table[] = {
 	{DEVICE_HWI(0x03f0, 0x581d)},	/* HP lt4112 LTE/HSPA+ Gobi 4G Modem (Huawei me906e) */
 
 	{ }				/* Terminating entry */
+	{DEVICE_SWI(0x413c, 0x81b5)},	/* Dell Wireless 5811e QDL */
+	{DEVICE_SWI(0x413c, 0x81b6)},	/* Dell Wireless 5811e QDL */
 };
 MODULE_DEVICE_TABLE(usb, id_table);
 

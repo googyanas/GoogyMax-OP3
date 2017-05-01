@@ -189,6 +189,8 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 1000);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
+	xhci->xhc_state |= XHCI_STATE_REMOVING;
+
 	pm_runtime_get_sync(&pdev->dev);
 
 	if (of_device_is_compatible(pdev->dev.of_node,
