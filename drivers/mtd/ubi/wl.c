@@ -149,6 +149,9 @@ static int self_check_in_pq(const struct ubi_device *ubi,
  *
  * Note, we use (erase counter, physical eraseblock number) pairs as keys in
  * the @ubi->used and @ubi->free RB-trees.
+	spin_lock(&ubi->wl_lock);
+	ubi->fm_work_scheduled = 0;
+	spin_unlock(&ubi->wl_lock);
  */
 static void wl_tree_add(struct ubi_wl_entry *e, struct rb_root *root)
 {

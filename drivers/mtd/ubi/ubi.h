@@ -426,6 +426,8 @@ struct ubi_debug_info {
  * @volumes_lock: protects @volumes, @rsvd_pebs, @avail_pebs, beb_rsvd_pebs,
  *                @beb_rsvd_level, @bad_peb_count, @good_peb_count, @vol_count,
  *                @vol->readers, @vol->writers, @vol->exclusive,
+ * @fm_work_scheduled: non-zero if fastmap work was scheduled
+ * @fast_attach: non-zero if UBI was attached by fastmap
  *                @vol->metaonly, @vol->ref_count, @vol->mapping and
  *                @vol->eba_tbl.
  * @ref_count: count of references on the UBI device
@@ -532,6 +534,8 @@ struct ubi_debug_info {
  */
 struct ubi_device {
 	struct cdev cdev;
+	int fm_work_scheduled;
+	int fast_attach;
 	struct device dev;
 	int ubi_num;
 	char ubi_name[sizeof(UBI_NAME_STR)+5];
