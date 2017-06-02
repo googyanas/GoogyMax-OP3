@@ -275,6 +275,7 @@ static void option_instat_callback(struct urb *urb);
 #define TELIT_PRODUCT_LE920			0x1200
 #define TELIT_PRODUCT_LE910			0x1201
 #define TELIT_PRODUCT_LE910_USBCFG4		0x1206
+#define TELIT_PRODUCT_ME910			0x1100
 #define TELIT_PRODUCT_LE920A4_1207		0x1207
 #define TELIT_PRODUCT_LE920A4_1208		0x1208
 #define TELIT_PRODUCT_LE920A4_1211		0x1211
@@ -611,6 +612,11 @@ static const struct option_blacklist_info zte_mf626_blacklist = {
 
 static const struct option_blacklist_info zte_1255_blacklist = {
 	.reserved = BIT(3) | BIT(4),
+};
+
+static const struct option_blacklist_info telit_me910_blacklist = {
+	.sendsetup = BIT(0),
+	.reserved = BIT(1) | BIT(3),
 };
 
 static const struct option_blacklist_info telit_le910_blacklist = {
@@ -1209,6 +1215,8 @@ static const struct option_blacklist_info telit_le920a4_blacklist_1 = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x0008, 0xff, 0xff, 0xff) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x0009, 0xff, 0xff, 0xff) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x000a, 0xff, 0xff, 0xff) },
+	{ USB_DEVICE(TELIT_VENDOR_ID, TELIT_PRODUCT_ME910),
+		.driver_info = (kernel_ulong_t)&telit_me910_blacklist },
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x000b, 0xff, 0xff, 0xff) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x000c, 0xff, 0xff, 0xff) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(ZTE_VENDOR_ID, 0x000d, 0xff, 0xff, 0xff) },

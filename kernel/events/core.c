@@ -986,77 +986,6 @@ static void perf_event_ctx_unlock(struct perf_event *event,
 }
 
 /*
- * Because of perf_event::ctx migration in sys_perf_event_open::move_group and
- * perf_pmu_migrate_context() we need some magic.
- *
- * Those places that change perf_event::ctx will hold both
- * perf_event_ctx::mutex of the 'old' and 'new' ctx value.
- *
- * Lock ordering is by mutex address. There is one other site where
- * perf_event_context::mutex nests and that is put_event(). But remember that
- * that is a parent<->child context relation, and migration does not affect
- * children, therefore these two orderings should not interact.
- *
- * The change in perf_event::ctx does not affect children (as claimed above)
- * because the sys_perf_event_open() case will install a new event and break
- * the ctx parent<->child relation, and perf_pmu_migrate_context() is only
- * concerned with cpuctx and that doesn't have children.
- *
- * The places that change perf_event::ctx will issue:
- *
- *   perf_remove_from_context();
- *   synchronize_rcu();
- *   perf_install_in_context();
- *
- * to affect the change. The remove_from_context() + synchronize_rcu() should
- * quiesce the event, after which we can install it in the new location. This
- * means that only external vectors (perf_fops, prctl) can perturb the event
- * while in transit. Therefore all such accessors should also acquire
- * perf_event_context::mutex to serialize against this.
- *
- * However; because event->ctx can change while we're waiting to acquire
- * ctx->mutex we must be careful and use the below perf_event_ctx_lock()
- * function.
- *
- * Lock order:
- *	task_struct::perf_event_mutex
- *	  perf_event_context::mutex
- *	    perf_event_context::lock
- *	    perf_event::child_mutex;
- *	    perf_event::mmap_mutex
- *	    mmap_sem
- */
-static struct perf_event_context *perf_event_ctx_lock(struct perf_event *event)
-{
-	struct perf_event_context *ctx;
-
-again:
-	rcu_read_lock();
-	ctx = ACCESS_ONCE(event->ctx);
-	if (!atomic_inc_not_zero(&ctx->refcount)) {
-		rcu_read_unlock();
-		goto again;
-	}
-	rcu_read_unlock();
-
-	mutex_lock(&ctx->mutex);
-	if (event->ctx != ctx) {
-		mutex_unlock(&ctx->mutex);
-		put_ctx(ctx);
-		goto again;
-	}
-
-	return ctx;
-}
-
-static void perf_event_ctx_unlock(struct perf_event *event,
-				  struct perf_event_context *ctx)
-{
-	mutex_unlock(&ctx->mutex);
-	put_ctx(ctx);
-}
-
-/*
  * This must be done under the ctx->lock, such as to serialize against
  * context_equiv(), therefore we cannot call put_ctx() since that might end up
  * calling scheduler related locks and ctx->lock nests inside those.
@@ -1852,19 +1781,6 @@ retry:
  * Strictly speaking kernel users cannot create groups and therefore this
  * interface does not need the perf_event_ctx_lock() magic.
  */
-static void _perf_event_disable(struct perf_event *event)
-{
-	struct perf_event_context *ctx;
-
-	ctx = perf_event_ctx_lock(event);
-	_perf_event_disable(event);
-	perf_event_ctx_unlock(event, ctx);
-}
-
-/*
- * Strictly speaking kernel users cannot create groups and therefore this
- * interface does not need the perf_event_ctx_lock() magic.
- */
 void perf_event_disable(struct perf_event *event)
 {
 	struct perf_event_context *ctx;
@@ -2396,7 +2312,7 @@ out:
 /*
  * See perf_event_disable();
  */
-static void _perf_event_enable(struct perf_event *event)
+void perf_event_enable(struct perf_event *event)
 {
 	struct perf_event_context *ctx;
 
@@ -4224,7 +4140,7 @@ static void perf_event_init_userpage(struct perf_event *event)
 	rcu_read_lock();
 	rb = rcu_dereference(event->rb);
 	if (!rb)
-		return -EFAULT;
+		goto unlock;
 
 	userpg = rb->user_page;
 
@@ -4362,7 +4278,6 @@ static void ring_buffer_attach(struct perf_event *event,
 		list_add_rcu(&event->rb_entry, &rb->event_list);
 		spin_unlock_irqrestore(&rb->event_lock, flags);
 	}
-
 
 	rcu_assign_pointer(event->rb, rb);
 
@@ -4554,19 +4469,6 @@ static int perf_mmap(struct file *file, struct vm_area_struct *vma)
 
 	/*
 	 * If we have rb pages ensure they're a power-of-two number, so we
-static long perf_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
-	struct perf_event *event = file->private_data;
-	struct perf_event_context *ctx;
-	long ret;
-
-	ctx = perf_event_ctx_lock(event);
-	ret = _perf_ioctl(event, cmd, arg);
-	perf_event_ctx_unlock(event, ctx);
-
-	return ret;
-}
-
 	 * can do bitmasks instead of modulo.
 	 */
 	if (nr_pages != 0 && !is_power_of_2(nr_pages))
@@ -6168,8 +6070,6 @@ end:
 	rcu_read_unlock();
 }
 
-DEFINE_PER_CPU(struct pt_regs, __perf_regs[4]);
-
 int perf_swevent_get_recursion_context(void)
 {
 	struct swevent_htable *swhash = this_cpu_ptr(&swevent_htable);
@@ -6185,30 +6085,21 @@ inline void perf_swevent_put_recursion_context(int rctx)
 	put_recursion_context(swhash->recursion, rctx);
 }
 
-void ___perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)
-{
-	struct perf_sample_data data;
-
-	if (WARN_ON_ONCE(!regs))
-		return;
-
-	perf_sample_data_init(&data, addr, 0);
-	do_perf_sw_event(PERF_TYPE_SOFTWARE, event_id, nr, &data, regs);
-}
-
 void __perf_sw_event(u32 event_id, u64 nr, struct pt_regs *regs, u64 addr)
 {
+	struct perf_sample_data data;
 	int rctx;
 
 	preempt_disable_notrace();
 	rctx = perf_swevent_get_recursion_context();
-	if (unlikely(rctx < 0))
-		goto fail;
+	if (rctx < 0)
+		return;
 
-	___perf_sw_event(event_id, nr, regs, addr);
+	perf_sample_data_init(&data, addr, 0);
+
+	do_perf_sw_event(PERF_TYPE_SOFTWARE, event_id, nr, &data, regs);
 
 	perf_swevent_put_recursion_context(rctx);
-fail:
 	preempt_enable_notrace();
 }
 
@@ -6710,6 +6601,7 @@ static void cpu_clock_event_del(struct perf_event *event, int flags)
 {
 	cpu_clock_event_stop(event, flags);
 }
+
 static void cpu_clock_event_read(struct perf_event *event)
 {
 	cpu_clock_event_update(event);
@@ -7536,15 +7428,6 @@ static void mutex_lock_double(struct mutex *a, struct mutex *b)
 	mutex_lock_nested(b, SINGLE_DEPTH_NESTING);
 }
 
-static void mutex_lock_double(struct mutex *a, struct mutex *b)
-{
-	if (b < a)
-		swap(a, b);
-
-	mutex_lock(a);
-	mutex_lock_nested(b, SINGLE_DEPTH_NESTING);
-}
-
 /**
  * sys_perf_event_open - open a performance event, associate it to a task/cpu
  *
@@ -7885,7 +7768,7 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 				 perf_overflow_handler_t overflow_handler,
 				 void *context)
 {
-	struct perf_event_context *ctx, *uninitialized_var(gctx);
+	struct perf_event_context *ctx;
 	struct perf_event *event;
 	int err;
 
@@ -7915,11 +7798,6 @@ perf_event_create_kernel_counter(struct perf_event_attr *attr, int cpu,
 	mutex_lock(&ctx->mutex);
 	perf_install_in_context(ctx, event, cpu);
 	perf_unpin_context(ctx);
-
-	if (move_group) {
-		mutex_unlock(&gctx->mutex);
-		put_ctx(gctx);
-	}
 	mutex_unlock(&ctx->mutex);
 
 	return event;
@@ -8049,7 +7927,6 @@ static void perf_event_exit_task_context(struct task_struct *child, int ctxn)
 	struct perf_event_context *child_ctx, *clone_ctx = NULL;
 	unsigned long flags;
 
-	mutex_unlock(&src_ctx->mutex);
 	if (likely(!child->perf_event_ctxp[ctxn])) {
 		perf_event_task(child, NULL, 0);
 		return;
@@ -8397,7 +8274,7 @@ static int perf_event_init_context(struct task_struct *child, int ctxn)
 		ret = inherit_task_group(event, parent, parent_ctx,
 					 child, ctxn, &inherited_all);
 		if (ret)
-			goto out_unlock;
+			break;
 	}
 
 	/*
@@ -8413,7 +8290,7 @@ static int perf_event_init_context(struct task_struct *child, int ctxn)
 		ret = inherit_task_group(event, parent, parent_ctx,
 					 child, ctxn, &inherited_all);
 		if (ret)
-			goto out_unlock;
+			break;
 	}
 
 	raw_spin_lock_irqsave(&parent_ctx->lock, flags);
@@ -8441,7 +8318,6 @@ static int perf_event_init_context(struct task_struct *child, int ctxn)
 	}
 
 	raw_spin_unlock_irqrestore(&parent_ctx->lock, flags);
-out_unlock:
 	mutex_unlock(&parent_ctx->mutex);
 
 	perf_unpin_context(parent_ctx);
