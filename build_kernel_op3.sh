@@ -14,7 +14,7 @@ rm -f /home/anas/OnePlus3/Kernel/arch/arm64/boot/Image*.*
 rm -f /home/anas/OnePlus3/Kernel/arch/arm64/boot/.Image*.*
 make googymax_op3_defconfig || exit 1
 
-make -j2 || exit 1
+make -j4 || exit 1
 
 mkdir -p /home/anas/OnePlus3/Release/system/lib/modules
 rm -rf /home/anas/OnePlus3/Release/system/lib/modules/*
