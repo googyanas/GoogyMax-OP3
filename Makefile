@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 18
-SUBLEVEL = 58
+SUBLEVEL = 59
 EXTRAVERSION =
 NAME = Shuffling Zombie Juror
 
@@ -407,7 +407,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -std=gnu89 \
-		   -mtune=cortex-a72 -Wno-array-bounds -Wno-tautological-compare -Wno-misleading-indentation -Wno-maybe-uninitialized \
+		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 -Wno-array-bounds -Wno-tautological-compare -Wno-misleading-indentation -Wno-maybe-uninitialized \
                    -Wno-memset-transposed-args -Wno-discarded-array-qualifiers -Wno-logical-not-parentheses -Wno-array-bounds \
                    -Wno-switch -Wno-switch-bool -Wno-unused-variable -Wno-bool-compare
 
